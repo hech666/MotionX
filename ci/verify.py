@@ -2,6 +2,11 @@ from pathlib import Path
 import subprocess,tempfile,struct,json,hashlib,plistlib
 packages=list(Path('packages').glob('*.deb'));assert len(packages)==1,packages
 pkg=packages[0]
+control=subprocess.check_output(['dpkg-deb','-f',str(pkg)],text=True)
+keys=[line.split(':',1)[0].lower() for line in control.splitlines() if line and not line[0].isspace()]
+assert len(keys)==len(set(keys)), 'duplicate control field'
+assert keys.count('installed-size')==1, 'Installed-Size must occur exactly once'
+subprocess.run(['dpkg-deb','--info',str(pkg)],check=True)
 with tempfile.TemporaryDirectory() as td:
  root=Path(td)
  subprocess.run(['dpkg-deb','-x',str(pkg),str(root)],check=True)
