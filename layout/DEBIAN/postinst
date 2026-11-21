@@ -1,0 +1,4 @@
+#!/bin/sh
+killall -9 replayd 2>/dev/null || true
+killall -9 backboardd 2>/dev/null || true
+exit 0

@@ -1,0 +1,37 @@
+name: Build MotionX
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: brew install dpkg ldid
+      - name: Install Theos and SDK
+        run: |
+          git clone --recursive --depth 1 https://github.com/roothide/theos.git "$HOME/theos"
+          git clone --depth 1 --filter=blob:none --sparse https://github.com/theos/sdks.git "$RUNNER_TEMP/sdks"
+          git -C "$RUNNER_TEMP/sdks" sparse-checkout set iPhoneOS16.5.sdk
+          mkdir -p "$HOME/theos/sdks"
+          cp -R "$RUNNER_TEMP/sdks/iPhoneOS16.5.sdk" "$HOME/theos/sdks/"
+      - name: Build arm64e only
+        env:
+          THEOS: /Users/runner/theos
+        run: |
+          sed -i '' "s/^Version:.*/Version: 5.2.0-${GITHUB_RUN_NUMBER}/" control
+          chmod 755 layout/DEBIAN/postinst layout/DEBIAN/postrm
+          make clean package THEOS_PACKAGE_SCHEME=roothide ARCHS=arm64e
+      - name: Verify package
+        run: python3 ci/verify.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MotionX-roothide-arm64e-${{ github.run_number }}
+          path: |
+            packages/*.deb
+            verification.json
+          if-no-files-found: error
